@@ -2,7 +2,8 @@ import axios from 'axios';
 
 // 1. Creamos la instancia base
 const api = axios.create({
-    baseURL: 'http://localhost:8001/api/', // Cambia esto si tu URL base es diferente
+    // Leemos la URL base desde las variables de entorno de Vite
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/',
     headers: {
         'Content-Type': 'application/json',
     }
@@ -34,8 +35,11 @@ api.interceptors.response.use(
                 const refreshToken = localStorage.getItem('refresh_token');
                 
                 if (refreshToken) {
+                    // 🚨 EL ARREGLO: Reutilizamos la variable de entorno para la petición limpia
+                    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
+                    
                     // Hacemos una petición limpia (sin interceptores) para renovar el pase
-                    const response = await axios.post('http://localhost:8001/api/token/refresh/', {
+                    const response = await axios.post(`${baseURL}token/refresh/`, {
                         refresh: refreshToken
                     });
 
