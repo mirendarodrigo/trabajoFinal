@@ -51,3 +51,18 @@ La plataforma cuenta con un sistema de autenticación seguro mediante **JSON Web
 ```bash
 git clone [https://github.com/mirendarodrigo/trabajoFinal.git](https://github.com/mirendarodrigo/trabajoFinal.git)
 cd trabajoFinal
+
+**Configuración Backend:**
+
+cd backend
+python -m venv venv
+# Activar entorno (Windows: venv\Scripts\activate | Mac/Linux: source venv/bin/activate)
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+
+**Configuración Frontend:**
+
+cd frontend
+npm install
+npm run dev
