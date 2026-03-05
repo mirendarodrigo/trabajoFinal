@@ -110,14 +110,24 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+# ==============================================================================
+# 🛡️ CORS (COMUNICACIÓN CON REACT/VERCEL)
+# ==============================================================================
+
 if 'RENDER' in os.environ:
     CORS_ALLOW_ALL_ORIGINS = False
+    
+    # 🚨 Ponemos una lista con todos los links válidos
     CORS_ALLOWED_ORIGINS = [
+        'https://trabajo-final-98x2.vercel.app', # Tu link corto y bonito
+        'https://trabajo-final-98x2-ingerxqts-mirendarodrigo-9423s-projects.vercel.app', # El link largo
         os.environ.get('FRONTEND_URL', 'http://localhost:5173'), 
     ]
 else:
     CORS_ALLOW_ALL_ORIGINS = True
 
+# Añadimos esto para asegurar que los tokens JWT viajen sin problema
+CORS_ALLOW_CREDENTIALS = True
 AUTH_USER_MODEL = 'users.CustomUser'
 
 REST_FRAMEWORK = {
