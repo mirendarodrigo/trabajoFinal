@@ -1,0 +1,51 @@
+/* --- ESTILOS INSTITUTO PICCADILLY --- */
+:root {
+  --piccadilly-blue: #0b2265;
+  --piccadilly-red: #da121a;
+}
+
+/* Colores personalizados */
+.text-piccadilly-blue { color: var(--piccadilly-blue) !important; }
+.text-piccadilly-red { color: var(--piccadilly-red) !important; }
+.bg-piccadilly-blue { background-color: var(--piccadilly-blue) !important; }
+.bg-piccadilly-red { background-color: var(--piccadilly-red) !important; }
+
+/* Botones personalizados */
+.btn-piccadilly {
+  background-color: var(--piccadilly-blue);
+  color: white;
+  border: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-piccadilly:hover {
+  background-color: #071747;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(11, 34, 101, 0.2);
+}
+
+.btn-piccadilly-red {
+  background-color: var(--piccadilly-red);
+  color: white;
+  border: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-piccadilly-red:hover {
+  background-color: #b00f15;
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Tarjetas de cursos con borde superior de color */
+.course-card {
+  transition: all 0.3s ease;
+  border-top: 4px solid var(--piccadilly-red) !important;
+}
+.course-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+}

@@ -1,0 +1,36 @@
+# =========================
+# BACKEND (Python / Django)
+# =========================
+# Entornos virtuales
+venv/
+env/
+ENV/
+
+# Archivos compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Base de datos local
+db.sqlite3
+db.sqlite3-journal
+
+# Archivos de medios (imágenes locales)
+backend/media/
+
+# =========================
+# FRONTEND (Node / React)
+# =========================
+node_modules/
+dist/
+build/
+.npm/
+
+# =========================
+# VARIABLES DE ENTORNO Y OS
+# =========================
+.env
+.env.local
+.env.production
+.DS_Store
+Thumbs.db
