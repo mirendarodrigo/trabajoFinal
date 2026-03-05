@@ -4,25 +4,33 @@ import dj_database_url
 from dotenv import load_dotenv 
 from datetime import timedelta
 
-# Cargar variables de entorno
+# Cargar variables de entorno (solo funciona en desarrollo local; en Render se configuran en el panel)
 load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# ==============================================================================
+# 🚀 CONFIGURACIONES DE SEGURIDAD Y DESPLIEGUE (PRODUCCIÓN)
+# ==============================================================================
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+# Si no hay SECRET_KEY en el entorno, usa una por defecto (útil para local)
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-rya=t)viv$%9)8*3^tk#1#y%invtjh39j*)f_9o5a77q3ne3j!')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-rya=t)viv$%9)8*3^tk#1#y%invtjh39j*)f_9o5a77q3ne3j!'
+# 🚨 MUY IMPORTANTE: Se apaga el modo DEBUG si la variable RENDER está presente.
+DEBUG = 'RENDER' not in os.environ
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
+# Hosts permitidos: En local acepta todos ('*'). En Render, acepta la URL que Render asigne.
 ALLOWED_HOSTS = []
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+else:
+    ALLOWED_HOSTS = ['*'] # Desarrollo local
 
-
-# Application definition
+# ==============================================================================
+# 📦 APLICACIONES
+# ==============================================================================
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -49,6 +57,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    # Whitenoise sirve los archivos estáticos de Django en producción
+    'whitenoise.middleware.WhiteNoiseMiddleware', 
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -77,105 +87,120 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# ==============================================================================
+# 🗄️ BASE DE DATOS (NEON POSTGRESQL / RENDER)
+# ==============================================================================
 
 DATABASES = {
     'default': dj_database_url.config(
         default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600, # Mantiene la conexión viva un rato para rendimiento
-        ssl_require=True  # Neon requiere SSL obligatoriamente
+        conn_max_age=600,
+        ssl_require=True
     )
 }
 
-
-# Password validation
-# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
+# ==============================================================================
+# 🔒 VALIDACIÓN DE CONTRASEÑAS
+# ==============================================================================
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# ==============================================================================
+# 🌐 INTERNACIONALIZACIÓN
+# ==============================================================================
 
-# Internationalization
-# https://docs.djangoproject.com/en/6.0/topics/i18n/
-
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
+LANGUAGE_CODE = 'es-ar' # 🚨 CAMBIADO: Español de Argentina
+TIME_ZONE = 'America/Argentina/Buenos_Aires' # 🚨 CAMBIADO: Zona horaria correcta
 USE_I18N = True
-
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
+# ==============================================================================
+# 📂 ARCHIVOS ESTÁTICOS (WHITENOISE PARA RENDER)
+# ==============================================================================
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Permitir acceso desde cualquier origen (DEV ONLY)
-# En producción, esto se cambia a la lista de dominios de React
-CORS_ALLOW_ALL_ORIGINS = True 
+# ==============================================================================
+# 🛡️ CORS (COMUNICACIÓN CON REACT/VERCEL)
+# ==============================================================================
 
-# Definir modelo de usuario personalizado
+# Si estamos en Render, limitamos quién puede conectarse. Si no, permitimos todo.
+if 'RENDER' in os.environ:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [
+        # Aquí pondremos la URL que Vercel te dé cuando subamos el frontend
+        os.environ.get('FRONTEND_URL', 'http://localhost:5173'), 
+    ]
+else:
+    CORS_ALLOW_ALL_ORIGINS = True
+
+# ==============================================================================
+# 👤 USUARIOS Y AUTENTICACIÓN (JWT)
+# ==============================================================================
+
 AUTH_USER_MODEL = 'users.CustomUser'
 
-# Configuración de DRF
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated', # Cerrado por defecto
+        'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 100, # O el número que prefieras por defecto
+    'PAGE_SIZE': 100,
 }
 
-
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15), # 🚨 Aumentado a 15 mins para producción
     'REFRESH_TOKEN_LIFETIME': timedelta(days=12),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-# Configuración de Email para Desarrollo (Imprime en consola)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'notificaciones@campus.piccadilly.com'
+# ==============================================================================
+# 📧 CORREO ELECTRÓNICO (BREVO SMTP)
+# ==============================================================================
 
-# --- CONFIGURACIÓN CLOUDINARY ---
+# Si estamos en Render, usamos Brevo. Si estamos en local, imprime en consola.
+if 'RENDER' in os.environ:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp-relay.brevo.com'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = os.environ.get('BREVO_SMTP_USER') # Tu correo de login de Brevo
+    EMAIL_HOST_PASSWORD = os.environ.get('BREVO_SMTP_PASSWORD') # La clave maestra (Master password) que te da Brevo
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+DEFAULT_FROM_EMAIL = 'Campus Piccadilly <no-reply@campuspiccadilly.com>'
+
+# ==============================================================================
+# ☁️ ALMACENAMIENTO (CLOUDINARY)
+# ==============================================================================
+
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
     'API_KEY': os.environ.get('CLOUDINARY_API_KEY'),
     'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET'),
 }
 
-# LA NUEVA FORMA DE DJANGO 5.1+ PARA CONFIGURAR ALMACENAMIENTO
 STORAGES = {
     "default": {
-        # Esto manda los archivos (PDFs, Word, Excel) a Cloudinary
         "BACKEND": "cloudinary_storage.storage.RawMediaCloudinaryStorage",
     },
     "staticfiles": {
-        # Esto mantiene los archivos estáticos (CSS, JS de tu panel admin) locales
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        # Usamos Whitenoise para los estáticos del panel de admin
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 

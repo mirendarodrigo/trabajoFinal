@@ -10,9 +10,11 @@ django-filter==25.2
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
 et_xmlfile==2.0.0
+gunicorn==25.1.0
 idna==3.11
 numpy==2.3.5
 openpyxl==3.1.5
+packaging==26.0
 pandas==2.3.3
 pillow==12.1.1
 psycopg2-binary==2.9.11
@@ -25,3 +27,4 @@ six==1.17.0
 sqlparse==0.5.4
 tzdata==2025.2
 urllib3==2.6.3
+whitenoise==6.12.0
