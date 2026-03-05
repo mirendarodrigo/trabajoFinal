@@ -199,8 +199,8 @@ STORAGES = {
         "BACKEND": "cloudinary_storage.storage.RawMediaCloudinaryStorage",
     },
     "staticfiles": {
-        # Usamos Whitenoise para los estáticos del panel de admin
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        # Cambiamos a la versión estándar para que no lance Error 500 si falta un archivo
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage", 
     },
 }
 
