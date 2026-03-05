@@ -182,7 +182,7 @@ if 'RENDER' in os.environ:
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-DEFAULT_FROM_EMAIL = 'Campus Piccadilly <no-reply@campuspiccadilly.com>'
+DEFAULT_FROM_EMAIL = 'mirendarodrigo@gmail.com>'
 
 # ==============================================================================
 # ☁️ ALMACENAMIENTO (CLOUDINARY)
