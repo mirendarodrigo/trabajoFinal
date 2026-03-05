@@ -23,8 +23,11 @@ DEBUG = 'RENDER' not in os.environ
 # Hosts permitidos: En local acepta todos ('*'). En Render, acepta la URL que Render asigne.
 ALLOWED_HOSTS = []
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    # 🚨 ESTA LÍNEA ES LA MAGIA PARA QUE FUNCIONE EL LOGIN EN PRODUCCIÓN:
+    CSRF_TRUSTED_ORIGINS = [f'https://{RENDER_EXTERNAL_HOSTNAME}']
 else:
     ALLOWED_HOSTS = ['*'] # Desarrollo local
 
