@@ -7,7 +7,7 @@ class CustomUserAdmin(UserAdmin):
     # Agregamos nuestros campos personalizados a los 'fieldsets' (secciones del formulario)
     # Esto extiende la configuración por defecto de Django
     fieldsets = UserAdmin.fieldsets + (
-        ('Información Académica', {'fields': ('rol', 'dni', 'telefono')}),
+        ('Información Académica', {'fields': ('rol', 'dni', 'telefono','imagen_perfil')}),
     )
     
     # Columnas que se ven en la lista de usuarios

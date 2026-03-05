@@ -14,6 +14,9 @@ const Perfil = () => {
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
 
+    // 🚨 LA MAGIA: Leemos la URL de Render desde las variables de Vercel
+    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
+
     useEffect(() => {
         const fetchUserData = async () => {
             try {
@@ -21,8 +24,9 @@ const Perfil = () => {
                 if (!token) throw new Error("No token found");
                 
                 const decoded = jwtDecode(token);
-                // Mantenemos tu URL exacta
-                const response = await axios.get(`http://localhost:8001/api/usuarios/${decoded.user_id}/`, {
+                
+                // Usamos la URL dinámica
+                const response = await axios.get(`${baseURL}usuarios/${decoded.user_id}/`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setUser(response.data);
@@ -34,9 +38,9 @@ const Perfil = () => {
             }
         };
         fetchUserData();
-    }, []);
+    }, [baseURL]);
 
-   const handleImageChange = async (e) => {
+    const handleImageChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -47,16 +51,14 @@ const Perfil = () => {
         try {
             const token = localStorage.getItem('access_token');
             
-            // Hacemos el PATCH a tu URL exacta
-            const response = await axios.patch(`http://localhost:8001/api/usuarios/${user.id}/`, formData, {
+            // Usamos la URL dinámica
+            const response = await axios.patch(`${baseURL}usuarios/${user.id}/`, formData, {
                 headers: { 
                     'Authorization': `Bearer ${token}`
-                    // 🚨 EL SECRETO: NO pongas 'Content-Type'. 
-                    // El navegador lo pondrá solo y le agregará el "boundary" necesario para la imagen.
+                    // El navegador pone el Content-Type multipart/form-data automáticamente
                 }
             });
 
-            // Guardamos la foto nueva en localStorage para el Sidebar
             if (response.data.imagen_perfil) {
                 localStorage.setItem('avatar_actualizado', response.data.imagen_perfil);
             }
@@ -65,21 +67,23 @@ const Perfil = () => {
             window.location.reload(); 
             
         } catch (error) {
-            // Esto nos dirá exactamente de qué se queja Django si vuelve a fallar
             console.error("🚨 Error detallado de Django:", error.response?.data || error.message);
             toast.error("Hubo un problema al subir la imagen");
         } finally {
             setUploading(false);
         }
     };
+
     // FUNCIÓN PARA LA IMAGEN POR DEFECTO SEGÚN ROL
     const getAvatar = () => {
+        // Si hay imagen en Cloudinary, la usamos
         if (user?.imagen_perfil) return user.imagen_perfil;
         
+        // Si no, asignamos la de por defecto
         const rol = user?.rol?.toUpperCase();
         if (rol === 'ADMIN') return adminImg;
         if (rol === 'DOCENTE') return teacherImg;
-        return studentImg; // Por defecto o Alumno
+        return studentImg; 
     };
 
     if (loading) {
@@ -115,19 +119,18 @@ const Perfil = () => {
                 <Col xs={12} md={10} lg={8}>
                     <Card className="shadow-sm border-0 rounded-4 overflow-hidden">
                         
-                        {/* PORTADA DEL PERFIL (Banner superior) */}
+                        {/* PORTADA DEL PERFIL */}
                         <div 
                             className="position-relative" 
                             style={{ 
                                 height: '140px', 
-                                backgroundColor: user.rol === 'ADMIN' ? '#212529' : '#0b2265',
+                                backgroundColor: user.rol === 'Administrador' ? '#212529' : '#0b2265',
                                 backgroundImage: 'linear-gradient(45deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 100%)'
                             }}
                         >
-                            {/* Insignia de Rol flotante */}
                             <Badge 
-                                bg={user.rol === 'ADMIN' ? 'danger' : 'light'} 
-                                text={user.rol === 'ADMIN' ? 'white' : 'dark'}
+                                bg={user.rol === 'Administrador' ? 'danger' : 'light'} 
+                                text={user.rol === 'Administrador' ? 'white' : 'dark'}
                                 className="position-absolute top-0 end-0 m-3 px-3 py-2 rounded-pill shadow-sm text-uppercase fw-bold"
                             >
                                 {user.rol || 'Usuario'}
@@ -136,7 +139,7 @@ const Perfil = () => {
 
                         <Card.Body className="px-4 px-md-5 pb-5 position-relative">
                             
-                            {/* AVATAR INTERACTIVO SOBREPUESTO */}
+                            {/* AVATAR INTERACTIVO */}
                             <div className="text-center" style={{ marginTop: '-75px', marginBottom: '20px' }}>
                                 <div className="position-relative d-inline-block">
                                     <img 
@@ -146,7 +149,6 @@ const Perfil = () => {
                                         style={{ width: '150px', height: '150px', objectFit: 'cover' }}
                                     />
                                     
-                                    {/* Botón flotante para cambiar imagen */}
                                     <label 
                                         htmlFor="upload-photo" 
                                         className="position-absolute bottom-0 end-0 bg-danger text-white p-2 rounded-circle shadow profile-camera-btn" 
@@ -170,7 +172,6 @@ const Perfil = () => {
 
                             <hr className="text-muted opacity-25 mb-4" />
 
-                            {/* INFORMACIÓN DETALLADA (Estilo Listado Elegante) */}
                             <Row className="g-4">
                                 <Col xs={12} md={6}>
                                     <div className="p-3 bg-light rounded-3 border border-light h-100 d-flex align-items-center transition-hover">
