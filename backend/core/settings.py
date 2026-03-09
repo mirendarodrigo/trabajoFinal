@@ -162,7 +162,7 @@ else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # 🚨 CORRECCIÓN 1: Se eliminó el símbolo '>' roto
-DEFAULT_FROM_EMAIL = 'Campus Piccadilly <mirendarodrigo@gmail.com>'
+DEFAULT_FROM_EMAIL = 'mirendarodrigo@gmail.com'
 
 # ==============================================================================
 # ☁️ ALMACENAMIENTO (CLOUDINARY)

@@ -10,11 +10,14 @@ print("--- SEÑALES DE USUARIOS (USERS) CARGADAS ---")
 
 def enviar_correo_asincrono(user_id, email, subject, text_content, html_content):
     from users.models import CustomUser 
+    from django.core.mail import get_connection
     import traceback
+    
+    connection = None
     try:
-        # Abrimos la conexión manualmente para este hilo
-        connection = get_connection() 
-        print(f"--- 📡 INTENTANDO CONEXIÓN SMTP PARA {email} ---")
+        # 1. Forzamos la apertura de conexión con un timeout corto
+        connection = get_connection(timeout=10) 
+        print(f"--- 📡 ABRIENDO CANAL SMTP PARA {email} ---")
         
         enviados = send_mail(
             subject,
@@ -23,17 +26,20 @@ def enviar_correo_asincrono(user_id, email, subject, text_content, html_content)
             [email],
             fail_silently=False,
             html_message=html_content,
-            connection=connection # <--- Usamos la conexión abierta para este hilo
+            connection=connection
         )
         
-        if enviados > 0:
+        if enviados:
             CustomUser.objects.filter(id=user_id).update(welcome_email_sent=True)
-            print(f"--- ✅ EMAIL ENVIADO EXITOSAMENTE A {email} ---")
+            print(f"--- ✅ CORREO ENTREGADO A BREVO PARA {email} ---")
+            
     except Exception as e:
-        print(f"--- ❌ ERROR EN HILO: {str(e)} ---")
-        print(traceback.format_exc())
-        
-       
+        print(f"--- ❌ FALLO EL ENVÍO: {str(e)} ---")
+    finally:
+        if connection:
+            connection.close() # Cerramos siempre para liberar al servidor
+            
+            
 @receiver(post_save, sender='users.CustomUser') # 🚨 Usamos el nombre como string 'app.Modelo'
 def enviar_mail_bienvenida(sender, instance, created, **kwargs):
     if instance.email and instance.rol and not instance.welcome_email_sent:
