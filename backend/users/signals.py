@@ -3,38 +3,37 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.mail import send_mail
 from django.conf import settings
-# 🚨 ELIMINAMOS la importación directa de CustomUser aquí arriba
+from django.core.mail import get_connection
 
 print("--- SEÑALES DE USUARIOS (USERS) CARGADAS ---")
 
+
 def enviar_correo_asincrono(user_id, email, subject, text_content, html_content):
     from users.models import CustomUser 
-    import traceback # Para ver el error real si lo hay
-    
+    import traceback
     try:
+        # Abrimos la conexión manualmente para este hilo
+        connection = get_connection() 
         print(f"--- 📡 INTENTANDO CONEXIÓN SMTP PARA {email} ---")
         
-        # Forzamos el envío y guardamos el resultado
-        resultado = send_mail(
+        enviados = send_mail(
             subject,
             text_content,
             settings.DEFAULT_FROM_EMAIL,
             [email],
-            fail_silently=False, # 🚨 CAMBIO: Ponlo en False para que el error SALTE en el log
-            html_message=html_content
+            fail_silently=False,
+            html_message=html_content,
+            connection=connection # <--- Usamos la conexión abierta para este hilo
         )
         
-        if resultado:
+        if enviados > 0:
             CustomUser.objects.filter(id=user_id).update(welcome_email_sent=True)
-            print(f"--- ✅ BREVO ACEPTÓ EL CORREO PARA {email} ---")
-        else:
-            print(f"--- ⚠️ EL CORREO NO SE ENVIÓ (resultado 0) ---")
-            
+            print(f"--- ✅ EMAIL ENVIADO EXITOSAMENTE A {email} ---")
     except Exception as e:
-        print(f"--- ❌ ERROR CRÍTICO EN HILO DE EMAIL: {str(e)} ---")
+        print(f"--- ❌ ERROR EN HILO: {str(e)} ---")
+        print(traceback.format_exc())
         
-        print(traceback.format_exc()) # Esto nos dirá la línea exacta del fallo
-        
+       
 @receiver(post_save, sender='users.CustomUser') # 🚨 Usamos el nombre como string 'app.Modelo'
 def enviar_mail_bienvenida(sender, instance, created, **kwargs):
     if instance.email and instance.rol and not instance.welcome_email_sent:
