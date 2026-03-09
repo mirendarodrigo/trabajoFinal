@@ -1,111 +1,205 @@
-import threading
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from django.core.mail import send_mail
-from django.conf import settings
-from academico.models import CustomUser
+from pathlib import Path
+import os
+import dj_database_url 
+from dotenv import load_dotenv 
+from datetime import timedelta
 
-print("--- SEÑALES DE USUARIOS (USERS) CARGADAS ---")
+# Cargar variables de entorno (solo funciona en desarrollo local; en Render se configuran en el panel)
+load_dotenv()
 
-# 1. FUNCIÓN QUE TRABAJA EN SEGUNDO PLANO
-def enviar_correo_asincrono(user_id, email, subject, text_content, html_content):
-    try:
-        # Enviamos el correo (ahora incluye la versión HTML)
-        send_mail(
-            subject,
-            text_content, # Versión texto plano (para clientes de correo antiguos)
-            settings.DEFAULT_FROM_EMAIL,
-            [email],
-            fail_silently=True, # Vital para que no rompa el server si Brevo falla
-            html_message=html_content # La magia visual 🚀
-        )
-        
-        # IMPORTANTE: Usamos .update() en lugar de .save() 
-        # Esto modifica la base de datos directo SIN volver a disparar el post_save
-        CustomUser.objects.filter(id=user_id).update(welcome_email_sent=True)
-        print(f"--- ✅ EMAIL BIENVENIDA ENVIADO Y MARCADO PARA {email} ---")
-        
-    except Exception as e:
-        print(f"--- ❌ ERROR ENVIANDO BIENVENIDA A {email}: {e} ---")
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
 
+# ==============================================================================
+# 🚀 CONFIGURACIONES DE SEGURIDAD Y DESPLIEGUE (PRODUCCIÓN)
+# ==============================================================================
 
-# 2. EL SIGNAL PRINCIPAL
-@receiver(post_save, sender=CustomUser)
-def enviar_mail_bienvenida(sender, instance, created, **kwargs):
-    """
-    Se dispara al crear o modificar un usuario. 
-    Lanza un hilo para enviar el correo sin congelar la respuesta del servidor.
-    """
-    if instance.email and instance.rol and not instance.welcome_email_sent:
-        print(f"--- PREPARANDO MAIL DE BIENVENIDA PARA: {instance.username} ---")
-        
-        subject = "¡Bienvenido al Campus Virtual Piccadilly!"
-        color_principal = "#0b2265" # Azul Piccadilly
-        color_secundario = "#dc3545" # Rojo Piccadilly (Botones/Detalles)
-        
-        # 3. PERSONALIZACIÓN SEGÚN ROL
-        if instance.rol == 'ALUMNO':
-            saludo = f"Hola {instance.first_name},"
-            mensaje_html = f"""
-                <p>Te damos la bienvenida al <strong>Instituto Piccadilly</strong>.</p>
-                <p>Tu cuenta de alumno ha sido creada exitosamente. A continuación, tus credenciales de acceso:</p>
-                <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid {color_secundario}; margin: 20px 0;">
-                    <p style="margin: 0;"><strong>Usuario:</strong> {instance.dni}</p>
-                    <p style="margin: 0;"><strong>Contraseña Inicial:</strong> {instance.dni}</p>
-                </div>
-                <p><em>Por favor, ingresa al campus y cambia tu contraseña lo antes posible por seguridad.</em></p>
-            """
-            text_content = f"Hola {instance.first_name},\nBienvenido al Instituto. Usuario: {instance.dni} | Clave: {instance.dni}."
-            
-        elif instance.rol == 'DOCENTE':
-            saludo = f"Hola Prof. {instance.last_name},"
-            mensaje_html = f"""
-                <p>Su cuenta docente en el <strong>Instituto Piccadilly</strong> ha sido habilitada.</p>
-                <p>Ya puede ingresar al sistema para gestionar sus cursos con los siguientes datos:</p>
-                <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid {color_secundario}; margin: 20px 0;">
-                    <p style="margin: 0;"><strong>Usuario:</strong> {instance.dni}</p>
-                    <p style="margin: 0;"><strong>Contraseña:</strong> {instance.dni}</p>
-                </div>
-            """
-            text_content = f"Hola Prof. {instance.last_name},\nSu cuenta está activa. Usuario: {instance.dni} | Clave: {instance.dni}."
-            
-        else:
-            saludo = f"Hola {instance.username},"
-            mensaje_html = "<p>Tu cuenta administrativa ha sido creada y configurada correctamente en el sistema.</p>"
-            text_content = f"Hola {instance.username}, tu cuenta ha sido creada."
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-rya=t)viv$%9)8*3^tk#1#y%invtjh39j*)f_9o5a77q3ne3j!')
 
-        # 4. PLANTILLA HTML PROFESIONAL
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; margin: 0; padding: 0;">
-            <div style="max-width: 600px; margin: 20px auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                
-                <div style="background-color: {color_principal}; color: white; padding: 20px; text-align: center;">
-                    <h2 style="margin: 0; letter-spacing: 1px;">CAMPUS PICCADILLY</h2>
-                </div>
+# Mantenemos el DEBUG en True temporalmente para cazar el error
+DEBUG = True
 
-                <div style="padding: 30px; background-color: #ffffff;">
-                    <h3 style="color: {color_principal};">{saludo}</h3>
-                    {mensaje_html}
-                    <br>
-                    <div style="text-align: center; margin-top: 20px;">
-                        <a href="https://trabajo-final-98x2.vercel.app/" style="display: inline-block; background-color: {color_secundario}; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Ingresar al Campus</a>
-                    </div>
-                </div>
+ALLOWED_HOSTS = []
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 
-                <div style="background-color: #f1f1f1; color: #777; padding: 15px; text-align: center; font-size: 12px;">
-                    <p style="margin: 0;">&copy; 2026 Instituto Piccadilly. Todos los derechos reservados.</p>
-                    <p style="margin: 5px 0 0 0;">Este es un mensaje automático, por favor no respondas a este correo.</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    CSRF_TRUSTED_ORIGINS = [f'https://{RENDER_EXTERNAL_HOSTNAME}']
+else:
+    ALLOWED_HOSTS = ['*']
 
-        # 5. LANZAR EL HILO ASÍNCRONO
-        hilo = threading.Thread(
-            target=enviar_correo_asincrono,
-            args=(instance.id, instance.email, subject, text_content, html_content)
-        )
-        hilo.start()
+# ==============================================================================
+# 📦 APLICACIONES
+# ==============================================================================
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'corsheaders',
+    'django_filters',
+    
+    'cloudinary_storage',
+    'cloudinary',
+
+    'users.apps.UsersConfig',
+    'academico.apps.AcademicoConfig',
+]
+
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', 
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'core.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'core.wsgi.application'
+
+# ==============================================================================
+# 🗄️ BASE DE DATOS (NEON POSTGRESQL / RENDER)
+# ==============================================================================
+
+DATABASES = {
+    'default': dj_database_url.config(
+        default=os.environ.get('DATABASE_URL'),
+        conn_max_age=0,
+        ssl_require=True
+    )
+}
+
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+LANGUAGE_CODE = 'es-ar' 
+TIME_ZONE = 'America/Argentina/Buenos_Aires' 
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# ==============================================================================
+# 🛡️ CORS (COMUNICACIÓN CON REACT/VERCEL)
+# ==============================================================================
+
+if 'RENDER' in os.environ:
+    CORS_ALLOW_ALL_ORIGINS = False
+    
+    # 🚨 Ponemos una lista con todos los links válidos
+    CORS_ALLOWED_ORIGINS = [
+        'https://trabajo-final-98x2.vercel.app', # Tu link corto y bonito
+        'https://trabajo-final-98x2-ingerxqts-mirendarodrigo-9423s-projects.vercel.app', # El link largo
+        os.environ.get('FRONTEND_URL', 'http://localhost:5173'), 
+    ]
+else:
+    CORS_ALLOW_ALL_ORIGINS = True
+
+# Añadimos esto para asegurar que los tokens JWT viajen sin problema
+CORS_ALLOW_CREDENTIALS = True
+AUTH_USER_MODEL = 'users.CustomUser'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 100,
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15), 
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=12),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+}
+
+if 'RENDER' in os.environ:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp-relay.brevo.com'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = os.environ.get('BREVO_SMTP_USER') 
+    EMAIL_HOST_PASSWORD = os.environ.get('BREVO_SMTP_PASSWORD') 
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# 🚨 CORRECCIÓN 1: Se eliminó el símbolo '>' roto
+DEFAULT_FROM_EMAIL = 'Campus Piccadilly <mirendarodrigo@gmail.com>'
+
+# ==============================================================================
+# ☁️ ALMACENAMIENTO (CLOUDINARY)
+# ==============================================================================
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': os.environ.get('CLOUDINARY_API_KEY'),
+    'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET'),
+}
+
+STORAGES = {
+    "default": {
+        # 🚨 CORRECCIÓN 2: MediaCloudinaryStorage es el correcto para manejar imágenes
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage", 
+    },
+}
+
+MEDIA_URL = 'media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# ==============================================================================
+# 🔦 LINTERNA DE LOGS (Forzar a Render a mostrar errores 500)
+# ==============================================================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
