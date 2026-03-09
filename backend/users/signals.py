@@ -8,24 +8,33 @@ from django.conf import settings
 print("--- SEÑALES DE USUARIOS (USERS) CARGADAS ---")
 
 def enviar_correo_asincrono(user_id, email, subject, text_content, html_content):
-    # 🚨 Importamos el modelo AQUÍ ADENTRO
     from users.models import CustomUser 
+    import traceback # Para ver el error real si lo hay
+    
     try:
-        send_mail(
+        print(f"--- 📡 INTENTANDO CONEXIÓN SMTP PARA {email} ---")
+        
+        # Forzamos el envío y guardamos el resultado
+        resultado = send_mail(
             subject,
             text_content,
             settings.DEFAULT_FROM_EMAIL,
             [email],
-            fail_silently=True,
+            fail_silently=False, # 🚨 CAMBIO: Ponlo en False para que el error SALTE en el log
             html_message=html_content
         )
         
-        CustomUser.objects.filter(id=user_id).update(welcome_email_sent=True)
-        print(f"--- ✅ EMAIL BIENVENIDA ENVIADO Y MARCADO PARA {email} ---")
-        
+        if resultado:
+            CustomUser.objects.filter(id=user_id).update(welcome_email_sent=True)
+            print(f"--- ✅ BREVO ACEPTÓ EL CORREO PARA {email} ---")
+        else:
+            print(f"--- ⚠️ EL CORREO NO SE ENVIÓ (resultado 0) ---")
+            
     except Exception as e:
-        print(f"--- ❌ ERROR ENVIANDO BIENVENIDA A {email}: {e} ---")
-
+        print(f"--- ❌ ERROR CRÍTICO EN HILO DE EMAIL: {str(e)} ---")
+        
+        print(traceback.format_exc()) # Esto nos dirá la línea exacta del fallo
+        
 @receiver(post_save, sender='users.CustomUser') # 🚨 Usamos el nombre como string 'app.Modelo'
 def enviar_mail_bienvenida(sender, instance, created, **kwargs):
     if instance.email and instance.rol and not instance.welcome_email_sent:
