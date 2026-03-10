@@ -71,7 +71,7 @@ const Landing = () => {
         <Container className="position-relative z-1" style={{ paddingTop: '120px' }}>
           <Row className="align-items-center flex-column-reverse flex-lg-row">
             <Col xs={12} lg={6} className="text-center text-lg-start mt-5 mt-lg-0">
-              <span className="badge mb-3 px-3 py-2 rounded-pill shadow-sm"  style="background-color: var(--piccadilly-red);">
+              <span className="badge bg-piccadilly-red mb-3 px-3 py-2 rounded-pill shadow-sm">
                 ¡Inscripciones Abiertas!
               </span>
               <h1 className="display-4 fw-bold mb-3 lh-1 text-piccadilly-blue">
