@@ -1,3 +1,8 @@
+import urllib.request
+import json
+import os
+
+
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated, BasePermission, SAFE_METHODS
 from rest_framework.views import APIView
@@ -16,7 +21,6 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from rest_framework.permissions import AllowAny
-
 from users.models import CustomUser
 from users.serializers import UserSerializer
 from .models import Categoria, Curso, Anuncio, ComentarioAnuncio, Comision, Inscripcion, Nota, MaterialEstudio, Evaluacion, Horario, Asistencia
@@ -453,7 +457,7 @@ class SolicitarResetPasswordView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        # AHORA PEDIMOS EL DNI/USERNAME
+        # Pedimos el DNI/USERNAME
         username = request.data.get('username') 
         user = CustomUser.objects.filter(username=username).first()
         
@@ -462,18 +466,63 @@ class SolicitarResetPasswordView(APIView):
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
             
-            link = f"http://localhost:5173/recuperar-password/{uid}/{token}"
+            # 🚨 CORRECCIÓN 1: Usamos la URL de Vercel dinámica
+            frontend_url = os.environ.get('FRONTEND_URL', 'https://trabajo-final-98x2.vercel.app')
+            link = f"{frontend_url}/recuperar-password/{uid}/{token}"
             
-            send_mail(
-                'Recuperación de Contraseña - Piccadilly',
-                f'Hola {user.first_name},\n\nHaz clic en el siguiente enlace para crear una nueva contraseña:\n{link}\n\nSi no solicitaste esto, ignora este correo.',
-                'no-reply@campus.piccadilly.com',
-                [user.email],
-                fail_silently=True,
-            )
-            
-        return Response({'mensaje': 'Si el DNI existe y tiene un correo asociado, enviamos las instrucciones.'}, status=status.HTTP_200_OK)
+            # 🚨 CORRECCIÓN 2: Plantilla HTML profesional
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+                <div style="background-color: #0b2265; color: white; padding: 20px; text-align: center;">
+                    <h2 style="margin: 0; letter-spacing: 1px;">CAMPUS PICCADILLY</h2>
+                </div>
+                <div style="padding: 30px; background-color: #ffffff;">
+                    <h3 style="color: #0b2265;">Recuperación de Acceso</h3>
+                    <p>Hola <strong>{user.first_name}</strong>,</p>
+                    <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en el campus virtual.</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{link}" style="display: inline-block; background-color: #dc3545; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Restablecer Contraseña</a>
+                    </div>
+                    <p style="color: #555; font-size: 14px;">O copia y pega este enlace en tu navegador:</p>
+                    <p style="word-break: break-all; font-size: 12px;"><a href="{link}" style="color: #0b2265;">{link}</a></p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="color: #888; font-size: 12px; margin: 0;">Si no solicitaste este cambio, ignora este correo. Tu cuenta sigue segura.</p>
+                </div>
+            </div>
+            """
 
+            try:
+                # 🚨 CORRECCIÓN 3: Envío instantáneo y seguro vía API de Brevo
+                api_key = os.environ.get('BREVO_API_KEY', '')
+                
+                if api_key:
+                    url = "https://api.brevo.com/v3/smtp/email"
+                    data = {
+                        "sender": {"email": "mirendarodrigo@gmail.com", "name": "Campus Piccadilly"},
+                        "to": [{"email": user.email}],
+                        "subject": "Recuperación de Contraseña - Campus Piccadilly",
+                        "htmlContent": html_content,
+                        "textContent": f"Hola {user.first_name},\n\nPara recuperar tu contraseña ingresa a: {link}"
+                    }
+                    
+                    payload = json.dumps(data).encode('utf-8')
+                    headers = {
+                        'accept': 'application/json',
+                        'api-key': api_key,
+                        'content-type': 'application/json'
+                    }
+                    
+                    req = urllib.request.Request(url, data=payload, headers=headers, method='POST')
+                    urllib.request.urlopen(req, timeout=10) # Timeout corto para que no se cuelgue React
+                    print(f"--- ✅ CORREO DE RECUPERACIÓN ENVIADO A {user.email} ---")
+                else:
+                    print("--- ⚠️ ADVERTENCIA: No se encontró BREVO_API_KEY en las variables de entorno ---")
+                    
+            except Exception as e:
+                print(f"--- ❌ FALLO EL ENVÍO POR API (Recuperación): {str(e)} ---")
+                
+        # Siempre devolvemos 200 OK para no revelar a hackers si un DNI existe o no en la base de datos
+        return Response({'mensaje': 'Si el DNI existe y tiene un correo asociado, enviamos las instrucciones.'}, status=status.HTTP_200_OK)
 class ConfirmarResetPasswordView(APIView):
     permission_classes = [AllowAny]
 
