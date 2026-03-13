@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Button, Form, Spinner, Alert, Breadcrumb, Row, Col,Badge } from 'react-bootstrap';
+import { Card, Button, Form, Spinner, Alert, Breadcrumb, Row, Col, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
@@ -7,11 +7,11 @@ import toast from 'react-hot-toast';
 const CargarAlumnos = () => {
   const [archivo, setArchivo] = useState(null);
   const [cargando, setCargando] = useState(false);
-  const [resultado, setResultado] = useState(null); // Guardará un objeto { tipo: 'success' | 'danger', mensaje: '' }
+  const [resultado, setResultado] = useState(null);
 
   const handleFileChange = (e) => {
     setArchivo(e.target.files[0]);
-    setResultado(null); // Limpiamos mensajes anteriores si elige un nuevo archivo
+    setResultado(null);
   };
 
   const handleSubirExcel = async (e) => {
@@ -25,14 +25,13 @@ const CargarAlumnos = () => {
     setCargando(true);
     setResultado(null);
 
-    // Para enviar archivos, necesitamos usar FormData en lugar de un objeto JSON normal
     const formData = new FormData();
     formData.append('file', archivo);
 
     try {
       const response = await api.post('upload-alumnos/', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data', // Fundamental para enviar archivos
+          'Content-Type': 'multipart/form-data',
         },
       });
 
@@ -42,7 +41,6 @@ const CargarAlumnos = () => {
       });
       toast.success("¡Carga masiva exitosa!");
       
-      // Limpiamos el formulario
       setArchivo(null);
       e.target.reset(); 
 
@@ -74,10 +72,27 @@ const CargarAlumnos = () => {
       </div>
 
       <Row>
-        {/* COLUMNA IZQUIERDA: Formulario de subida */}
         <Col xs={12} lg={6} className="mb-4">
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Body className="p-4 p-md-5 text-center">
+          {/* 🚨 RETOQUE UX: Agregamos position-relative para el overlay de carga */}
+          <Card className="border-0 shadow-sm h-100 position-relative">
+            
+            {/* 🚨 OVERLAY DE CARGA: Cubre la tarjeta cuando 'cargando' es true */}
+            {cargando && (
+              <div 
+                className="position-absolute w-100 h-100 d-flex flex-column align-items-center justify-content-center" 
+                style={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.8)', 
+                  zIndex: 10, 
+                  borderRadius: 'inherit' 
+                }}
+              >
+                <Spinner animation="grow" variant="primary" style={{ color: '#0b2265' }} />
+                <p className="mt-3 fw-bold text-piccadilly-blue">Procesando y enviando correos...</p>
+              </div>
+            )}
+
+            {/* Atenuamos ligeramente el contenido si está cargando */}
+            <Card.Body className={`p-4 p-md-5 text-center ${cargando ? 'opacity-50' : ''}`} style={{ transition: 'opacity 0.3s' }}>
               
               <div className="display-1 text-muted mb-4">
                 <i className="bi bi-file-earmark-excel text-success"></i>
@@ -94,6 +109,7 @@ const CargarAlumnos = () => {
                     onChange={handleFileChange}
                     size="lg"
                     className="border-primary shadow-sm"
+                    disabled={cargando} // Bloqueamos el input también
                   />
                 </Form.Group>
 
@@ -103,11 +119,15 @@ const CargarAlumnos = () => {
                     type="submit" 
                     size="lg" 
                     className="fw-bold" 
-                    style={{ backgroundColor: '#0b2265', borderColor: '#0b2265' }}
+                    style={{ 
+                      backgroundColor: cargando ? '#6c757d' : '#0b2265', // Cambia a gris si carga
+                      borderColor: cargando ? '#6c757d' : '#0b2265',
+                      transition: 'background-color 0.3s'
+                    }}
                     disabled={cargando || !archivo}
                   >
                     {cargando ? (
-                      <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" /> Procesando filas...</>
+                      <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" /> Trabajando...</>
                     ) : (
                       <><i className="bi bi-upload me-2"></i> Procesar e Inscribir</>
                     )}
@@ -115,7 +135,6 @@ const CargarAlumnos = () => {
                 </div>
               </Form>
 
-              {/* Mensajes de éxito o error */}
               {resultado && (
                 <Alert variant={resultado.tipo} className="mt-4 text-start border-start border-4 shadow-sm">
                   <i className={`bi ${resultado.tipo === 'success' ? 'bi-check-circle-fill text-success' : 'bi-exclamation-triangle-fill text-danger'} me-2`}></i>
@@ -127,7 +146,6 @@ const CargarAlumnos = () => {
           </Card>
         </Col>
 
-        {/* COLUMNA DERECHA: Instrucciones para el usuario */}
         <Col xs={12} lg={6} className="mb-4">
           <Card className="border-0 shadow-sm bg-light h-100">
             <Card.Body className="p-4 p-md-5">

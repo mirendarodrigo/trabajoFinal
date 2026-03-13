@@ -10,12 +10,15 @@ const GestionAlumnos = () => {
     const [loading, setLoading] = useState(true);
     const [busqueda, setBusqueda] = useState('');
 
-    // Estados del Modal de Ficha Académica (Carga Diferida)
+    // Estados del Modal de Ficha Académica
     const [showFichaModal, setShowFichaModal] = useState(false);
     const [alumnoActual, setAlumnoActual] = useState(null);
     const [comisionSeleccionada, setComisionSeleccionada] = useState('');
     const [inscripcionesDelAlumno, setInscripcionesDelAlumno] = useState([]);
     const [loadingFicha, setLoadingFicha] = useState(false);
+    
+    // 🚨 NUEVO: Estado para el spinner del botón "Matricular"
+    const [guardandoMatricula, setGuardandoMatricula] = useState(false);
 
     // Estados para el Modal de Crear Alumno
     const [showCrearModal, setShowCrearModal] = useState(false);
@@ -23,6 +26,9 @@ const GestionAlumnos = () => {
     const [nuevoApellido, setNuevoApellido] = useState('');
     const [nuevoEmail, setNuevoEmail] = useState('');
     const [nuevoDni, setNuevoDni] = useState('');
+    
+    // 🚨 NUEVO: Estado para el spinner del botón "Registrar Alumno"
+    const [guardandoAlumno, setGuardandoAlumno] = useState(false);
 
     const fetchData = async () => {
         setLoading(true);
@@ -48,6 +54,8 @@ const GestionAlumnos = () => {
     // --- LÓGICA PARA CREAR ALUMNO ---
     const handleCrearAlumno = async (e) => {
         e.preventDefault();
+        setGuardandoAlumno(true); // 🚨 Encendemos el spinner
+        
         try {
             const payload = {
                 first_name: nuevoNombre,
@@ -71,21 +79,20 @@ const GestionAlumnos = () => {
             } else {
                 toast.error("Error al registrar el alumno. Revisa los datos.");
             }
+        } finally {
+            setGuardandoAlumno(false); // 🚨 Apagamos el spinner termine bien o mal
         }
     };
 
-    // --- NUEVO: LÓGICA PARA ELIMINAR ALUMNO DEL SISTEMA ---
     const handleEliminarAlumno = async (idAlumno, nombreCompleto) => {
-        // Advertencia estricta antes de borrar
         if (window.confirm(`⚠️ ¿ESTÁS COMPLETAMENTE SEGURO?\n\nVas a eliminar a ${nombreCompleto} de forma permanente.\nEsto borrará todo su historial, notas e inscripciones. Esta acción NO se puede deshacer.`)) {
             try {
                 await api.delete(`usuarios/${idAlumno}/`);
                 toast.success("Alumno eliminado permanentemente del sistema.");
-                // Si el alumno borrado era el que teníamos abierto en la ficha, la cerramos
                 if (alumnoActual?.id === idAlumno) {
                     setShowFichaModal(false);
                 }
-                fetchData(); // Recargamos el padrón
+                fetchData(); 
             } catch (error) {
                 toast.error("Error al eliminar. Es posible que el alumno tenga registros protegidos.");
                 console.error("Error al borrar alumno:", error);
@@ -93,7 +100,7 @@ const GestionAlumnos = () => {
         }
     };
 
-    // --- LÓGICA DE LA FICHA DEL ALUMNO (LAZY LOADING) ---
+    // --- LÓGICA DE LA FICHA DEL ALUMNO ---
     const fetchInscripcionesAlumno = async (idAlumno) => {
         setLoadingFicha(true);
         try {
@@ -109,14 +116,16 @@ const GestionAlumnos = () => {
     const handleAbrirFicha = (alumno) => {
         setAlumnoActual(alumno);
         setComisionSeleccionada('');
-        setInscripcionesDelAlumno([]); // Limpiamos datos anteriores
+        setInscripcionesDelAlumno([]); 
         setShowFichaModal(true);
-        fetchInscripcionesAlumno(alumno.id); // Cargamos sus datos en tiempo real
+        fetchInscripcionesAlumno(alumno.id); 
     };
 
     const handleInscribir = async (e) => {
         e.preventDefault();
         if (!comisionSeleccionada) return toast.error("Selecciona una comisión");
+        
+        setGuardandoMatricula(true); // 🚨 Encendemos el spinner de matrícula
         try {
             await api.post('inscripciones/', {
                 alumno: alumnoActual.id,
@@ -128,6 +137,8 @@ const GestionAlumnos = () => {
             fetchInscripcionesAlumno(alumnoActual.id);
         } catch (error) {
             toast.error("Error al inscribir. Quizás ya esté anotado.");
+        } finally {
+            setGuardandoMatricula(false); // 🚨 Apagamos el spinner
         }
     };
 
@@ -153,7 +164,6 @@ const GestionAlumnos = () => {
         }
     };
 
-    // --- FILTRO DE BÚSQUEDA ---
     const alumnosFiltrados = alumnos.filter(alumno => {
         const termino = busqueda.toLowerCase();
         const nombreCompleto = `${alumno.first_name} ${alumno.last_name}`.toLowerCase();
@@ -167,7 +177,7 @@ const GestionAlumnos = () => {
 
     return (
         <div>
-            {/* --- CABECERA Y BUSCADOR RESPONSIVOS --- */}
+            {/* --- CABECERA Y BUSCADOR --- */}
             <div className="mb-4">
                 <Row className="align-items-center g-3">
                     <Col xs={12} lg={4}>
@@ -264,9 +274,10 @@ const GestionAlumnos = () => {
             </Card>
 
             {/* --- MODAL: CREAR ALUMNO --- */}
-            <Modal show={showCrearModal} onHide={() => setShowCrearModal(false)} centered>
+            {/* 🚨 Evitamos que se cierre si está guardando */}
+            <Modal show={showCrearModal} onHide={() => !guardandoAlumno && setShowCrearModal(false)} centered>
                 <Form onSubmit={handleCrearAlumno}>
-                    <Modal.Header closeButton className="bg-light">
+                    <Modal.Header closeButton={!guardandoAlumno} className="bg-light">
                         <Modal.Title className="fw-bold text-dark"><i className="bi bi-person-badge me-2 text-success"></i>Alta de Estudiante</Modal.Title>
                     </Modal.Header>
                     <Modal.Body className="p-4">
@@ -279,35 +290,47 @@ const GestionAlumnos = () => {
                             <div className="col-md-6 mb-3">
                                 <Form.Group>
                                     <Form.Label className="fw-medium text-muted small text-uppercase">Nombres <span className="text-danger">*</span></Form.Label>
-                                    <Form.Control type="text" className="shadow-sm" value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} required />
+                                    <Form.Control type="text" className="shadow-sm" value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} required disabled={guardandoAlumno} />
                                 </Form.Group>
                             </div>
                             <div className="col-md-6 mb-3">
                                 <Form.Group>
                                     <Form.Label className="fw-medium text-muted small text-uppercase">Apellidos <span className="text-danger">*</span></Form.Label>
-                                    <Form.Control type="text" className="shadow-sm" value={nuevoApellido} onChange={(e) => setNuevoApellido(e.target.value)} required />
+                                    <Form.Control type="text" className="shadow-sm" value={nuevoApellido} onChange={(e) => setNuevoApellido(e.target.value)} required disabled={guardandoAlumno} />
                                 </Form.Group>
                             </div>
                         </div>
 
                         <Form.Group className="mb-3">
                             <Form.Label className="fw-medium text-muted small text-uppercase">Documento (DNI sin puntos) <span className="text-danger">*</span></Form.Label>
-                            <Form.Control type="text" className="shadow-sm" placeholder="Ej: 35123456" value={nuevoDni} onChange={(e) => setNuevoDni(e.target.value)} required />
+                            <Form.Control type="text" className="shadow-sm" placeholder="Ej: 35123456" value={nuevoDni} onChange={(e) => setNuevoDni(e.target.value)} required disabled={guardandoAlumno} />
                         </Form.Group>
 
                         <Form.Group className="mb-3">
                             <Form.Label className="fw-medium text-muted small text-uppercase">Correo Electrónico</Form.Label>
-                            <Form.Control type="email" className="shadow-sm" placeholder="alumno@correo.com" value={nuevoEmail} onChange={(e) => setNuevoEmail(e.target.value)} />
+                            <Form.Control type="email" className="shadow-sm" placeholder="alumno@correo.com" value={nuevoEmail} onChange={(e) => setNuevoEmail(e.target.value)} disabled={guardandoAlumno} />
                         </Form.Group>
                     </Modal.Body>
                     <Modal.Footer className="bg-light">
-                        <Button variant="link" className="text-muted text-decoration-none" onClick={() => setShowCrearModal(false)}>Cancelar</Button>
-                        <Button variant="success" type="submit" className="fw-bold px-4 rounded-pill shadow-sm">Registrar Alumno</Button>
+                        <Button variant="link" className="text-muted text-decoration-none" onClick={() => setShowCrearModal(false)} disabled={guardandoAlumno}>Cancelar</Button>
+                        <Button 
+                            variant="success" 
+                            type="submit" 
+                            disabled={guardandoAlumno}
+                            className="fw-bold px-4 rounded-pill shadow-sm"
+                        >
+                            {/* 🚨 SPINNER CONDICIONAL */}
+                            {guardandoAlumno ? (
+                                <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" /> Registrando...</>
+                            ) : (
+                                'Registrar Alumno'
+                            )}
+                        </Button>
                     </Modal.Footer>
                 </Form>
             </Modal>
 
-            {/* --- MODAL: FICHA DEL ALUMNO (LAZY LOADING) --- */}
+            {/* --- MODAL: FICHA DEL ALUMNO --- */}
             <Modal show={showFichaModal} onHide={() => setShowFichaModal(false)} size="lg" centered>
                 <Modal.Header closeButton className="bg-light">
                     <Modal.Title className="fw-bold text-dark">
@@ -321,13 +344,31 @@ const GestionAlumnos = () => {
                     <div className="p-4 bg-white border-bottom shadow-sm z-1 position-relative">
                         <h6 className="fw-bold mb-3 text-dark"><i className="bi bi-plus-circle-fill text-success me-2"></i>Matricular en nuevo curso</h6>
                         <Form onSubmit={handleInscribir} className="d-flex flex-column flex-md-row gap-2">
-                            <Form.Select className="shadow-sm" value={comisionSeleccionada} onChange={(e) => setComisionSeleccionada(e.target.value)} required>
+                            <Form.Select 
+                                className="shadow-sm" 
+                                value={comisionSeleccionada} 
+                                onChange={(e) => setComisionSeleccionada(e.target.value)} 
+                                required
+                                disabled={loadingFicha || guardandoMatricula} // 🚨 Bloqueado si está cargando o guardando
+                            >
                                 <option value="">Selecciona la comisión para anotar al alumno...</option>
                                 {comisiones.filter(c => c.activo).map(c => (
                                     <option key={c.id} value={c.id}>{c.nombre_curso} - {c.nombre} ({c.periodo})</option>
                                 ))}
                             </Form.Select>
-                            <Button variant="success" type="submit" className="fw-bold px-4 shadow-sm w-100 w-md-auto text-nowrap" disabled={loadingFicha}>Matricular</Button>
+                            <Button 
+                                variant="success" 
+                                type="submit" 
+                                className="fw-bold px-4 shadow-sm w-100 w-md-auto text-nowrap" 
+                                disabled={loadingFicha || guardandoMatricula}
+                            >
+                                {/* 🚨 SPINNER CONDICIONAL PARA MATRÍCULA */}
+                                {guardandoMatricula ? (
+                                    <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" /> Matriculando...</>
+                                ) : (
+                                    'Matricular'
+                                )}
+                            </Button>
                         </Form>
                     </div>
 
@@ -378,7 +419,6 @@ const GestionAlumnos = () => {
                         )}
                     </div>
                     
-                    {/* Botón Peligroso dentro de la ficha también por comodidad */}
                     <div className="bg-white p-3 border-top d-flex justify-content-end">
                          <Button 
                              variant="outline-danger" 

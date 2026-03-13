@@ -8,6 +8,9 @@ const GestionDocentes = () => {
   const [comisiones, setComisiones] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  // 🚨 NUEVO ESTADO: Controla exclusivamente el spinner del botón de guardado
+  const [guardando, setGuardando] = useState(false);
+  
   // Estado para la barra de búsqueda
   const [busqueda, setBusqueda] = useState('');
 
@@ -21,7 +24,6 @@ const GestionDocentes = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // OPTIMIZACIÓN: Pedimos a Django explícitamente SOLO los usuarios con rol DOCENTE
       const [resUsuarios, resComisiones] = await Promise.all([
         api.get('usuarios/?rol=DOCENTE'),
         api.get('comisiones/')
@@ -43,6 +45,8 @@ const GestionDocentes = () => {
   // --- LÓGICA PARA CREAR DOCENTE ---
   const handleCrearDocente = async (e) => {
     e.preventDefault();
+    setGuardando(true); // 🚨 Activamos el spinner apenas el usuario hace clic
+
     try {
       const payload = {
         first_name: nuevoNombre,
@@ -72,6 +76,8 @@ const GestionDocentes = () => {
       } else {
         toast.error(`Error: ${JSON.stringify(errorData)}`);
       }
+    } finally {
+      setGuardando(false); // 🚨 Apagamos el spinner termine bien o mal
     }
   };
 
@@ -192,9 +198,9 @@ const GestionDocentes = () => {
       </Card>
 
       {/* --- MODAL: ALTA DE DOCENTE --- */}
-      <Modal show={showCrearModal} onHide={() => setShowCrearModal(false)} centered>
+      <Modal show={showCrearModal} onHide={() => !guardando && setShowCrearModal(false)} centered>
         <Form onSubmit={handleCrearDocente}>
-          <Modal.Header closeButton className="bg-light">
+          <Modal.Header closeButton={!guardando} className="bg-light">
             <Modal.Title className="fw-bold text-dark"><i className="bi bi-person-badge me-2 text-primary"></i>Alta de Docente</Modal.Title>
           </Modal.Header>
           <Modal.Body className="p-4">
@@ -207,31 +213,43 @@ const GestionDocentes = () => {
               <div className="col-md-6 mb-3">
                 <Form.Group>
                   <Form.Label className="fw-medium text-muted small text-uppercase">Nombres <span className="text-danger">*</span></Form.Label>
-                  <Form.Control type="text" className="shadow-sm" value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} required />
+                  <Form.Control type="text" className="shadow-sm" value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} required disabled={guardando} />
                 </Form.Group>
               </div>
               <div className="col-md-6 mb-3">
                 <Form.Group>
                   <Form.Label className="fw-medium text-muted small text-uppercase">Apellidos <span className="text-danger">*</span></Form.Label>
-                  <Form.Control type="text" className="shadow-sm" value={nuevoApellido} onChange={(e) => setNuevoApellido(e.target.value)} required />
+                  <Form.Control type="text" className="shadow-sm" value={nuevoApellido} onChange={(e) => setNuevoApellido(e.target.value)} required disabled={guardando} />
                 </Form.Group>
               </div>
             </div>
 
             <Form.Group className="mb-3">
               <Form.Label className="fw-medium text-muted small text-uppercase">Documento (DNI sin puntos) <span className="text-danger">*</span></Form.Label>
-              <Form.Control type="text" className="shadow-sm" placeholder="Ej: 25123456" value={nuevoDni} onChange={(e) => setNuevoDni(e.target.value)} required />
+              <Form.Control type="text" className="shadow-sm" placeholder="Ej: 25123456" value={nuevoDni} onChange={(e) => setNuevoDni(e.target.value)} required disabled={guardando} />
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label className="fw-medium text-muted small text-uppercase">Correo Electrónico <span className="text-danger">*</span></Form.Label>
-              <Form.Control type="email" className="shadow-sm" placeholder="profesor@correo.com" value={nuevoEmail} onChange={(e) => setNuevoEmail(e.target.value)} required />
+              <Form.Control type="email" className="shadow-sm" placeholder="profesor@correo.com" value={nuevoEmail} onChange={(e) => setNuevoEmail(e.target.value)} required disabled={guardando} />
             </Form.Group>
           </Modal.Body>
           <Modal.Footer className="bg-light">
-            <Button variant="link" className="text-muted text-decoration-none" onClick={() => setShowCrearModal(false)}>Cancelar</Button>
-            <Button variant="primary" type="submit" className="fw-bold px-4 rounded-pill shadow-sm" style={{ backgroundColor: '#0b2265', borderColor: '#0b2265' }}>
-              Registrar Docente
+            <Button variant="link" className="text-muted text-decoration-none" onClick={() => setShowCrearModal(false)} disabled={guardando}>Cancelar</Button>
+            
+            {/* 🚨 BOTÓN ACTUALIZADO CON SPINNER Y ESTADO DE DESHABILITADO */}
+            <Button 
+              variant="primary" 
+              type="submit" 
+              disabled={guardando}
+              className="fw-bold px-4 rounded-pill shadow-sm" 
+              style={{ backgroundColor: guardando ? '#6c757d' : '#0b2265', borderColor: guardando ? '#6c757d' : '#0b2265' }}
+            >
+              {guardando ? (
+                <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" /> Procesando...</>
+              ) : (
+                'Registrar Docente'
+              )}
             </Button>
           </Modal.Footer>
         </Form>

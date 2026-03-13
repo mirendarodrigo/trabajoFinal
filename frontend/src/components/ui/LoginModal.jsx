@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
-import { useNavigate, Link } from 'react-router-dom'; // <--- AGREGAMOS Link AQUÍ
+import { Modal, Button, Form, Alert, Spinner, InputGroup } from 'react-bootstrap'; // <--- AGREGAMOS InputGroup AQUÍ
+import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../../services/auth';
 import toast from 'react-hot-toast';
 
@@ -9,6 +9,10 @@ const LoginModal = ({ show, handleClose }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  
+  // <--- NUEVO ESTADO PARA EL OJO DE LA CONTRASEÑA --->
+  const [showPassword, setShowPassword] = useState(false); 
+  
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -59,15 +63,26 @@ const LoginModal = ({ show, handleClose }) => {
             />
           </Form.Group>
 
+          {/* <--- CAMPO DE CONTRASEÑA MODIFICADO CON EL OJO ---> */}
           <Form.Group className="mb-4">
             <Form.Label className="fw-medium text-piccadilly-blue">Contraseña</Form.Label>
-            <Form.Control
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <InputGroup>
+              <Form.Control
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <Button 
+                variant="outline-secondary" 
+                onClick={() => setShowPassword(!showPassword)}
+                title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                className="border-start-0" // Pequeño retoque estético para que se una mejor al input
+              >
+                <i className={`bi ${showPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'} text-muted`}></i>
+              </Button>
+            </InputGroup>
           </Form.Group>
 
           <div className="d-grid">
