@@ -135,7 +135,7 @@ const Landing = () => {
           <Col xs={12} md={6} lg={4}>
             <Card className="h-100 shadow-sm course-card">
               <Card.Body className="p-4 text-center">
-                <h3 className="fw-bold text-piccadilly-red mb-1">COACHING</h3>
+                <h3 className="fw-bold text-piccadilly-red mb-1">KIDS</h3>
                 <h6 className="text-piccadilly-blue fw-bold mb-3">Nivel Primario</h6>
                 <p className="text-muted small">Programa de acompañamiento enfocado en fortalecer la comprensión mediante juegos y práctica guiada.</p>
               </Card.Body>
